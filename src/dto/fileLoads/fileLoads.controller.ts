@@ -1,4 +1,4 @@
-import { Controller, Get, HttpCode, HttpStatus, Inject, Logger } from '@nestjs/common';
+import { Controller, Get, HttpCode, HttpStatus, Inject, Logger, Query } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { FileLoadsService } from './fileLoads.service';
 
@@ -12,7 +12,7 @@ export class FileLoadsController {
   @Get('/excel')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Load File ' })
-  async processExcelFile(): Promise<any> {
+  async processExcelFile(@Query() query: any): Promise<any> {
     try {
       this.logger.debug('processExcelFile');
 
@@ -24,7 +24,7 @@ export class FileLoadsController {
         }
       });
       this.logger.debug(login.data.accessToken);
-      this.fileLoadsService.processExcelFile(login.data.accessToken);
+      this.fileLoadsService.processExcelFile({ query: query, token: login.data.accessToken });
       return { status: 'success' };
     } catch (error) {}
   }
