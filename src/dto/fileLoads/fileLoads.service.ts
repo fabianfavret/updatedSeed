@@ -13,13 +13,16 @@ export class FileLoadsService {
 
   private readonly editorURL = 'http://localhost:3000/api/';
   // private readonly editorURL = 'https://editor-backoffice.tangerine-dev.oneclicklabs.es/api/';
+  // private readonly editorURL = 'https://editor-backoffice.tangerine-qa.oneclicklabs.es/api/';
+  // private readonly editorURL = 'https://editor-backoffice.blueberrymath.ai/api/';
 
   async processExcelFile(params: {
     query: { educationYearGuid?: string; educationDisciplineGuid?: string; langCode?: string; responsible?: string };
     token?: string;
   }): Promise<any[]> {
     try {
-      params.query.educationDisciplineGuid = '09d34c20-71b9-475e-b42d-d677883700e9';
+      params.query.educationDisciplineGuid = '09d34c20-71b9-475e-b42d-d677883700e9'; // MATH
+      params.query.responsible = '5457e5d3-7600-428f-9c22-0bef43918c78'; // Pablo
 
       //const dataJSON = [];
       const directoryPath = 'excel';
@@ -93,13 +96,13 @@ export class FileLoadsService {
               let update = false;
               switch (params.query.langCode) {
                 case 'PT':
-                  update = guids[0].indexOf('ES') < 0 && guids[0].indexOf('EN') < 0;
+                  update = guids[0].indexOf('ES') < 0 && guids[0].indexOf('EN') < 0 && guids[0].indexOf('OCT-00') < 0 && guids[0].indexOf('TF-00') < 0;
                   break;
                 case 'ES':
-                  update = guids[0].indexOf('ES') > -1;
+                  update = guids[0].indexOf('ES') > -1 || guids[0].indexOf('OCT-00') > -1 || guids[0].indexOf('TF-00') > -1;
                   break;
                 case 'EN':
-                  update = guids[0].indexOf('EN') > -1;
+                  update = guids[0].indexOf('EN') > -1 || guids[0].indexOf('AL-00') > -1;
                   break;
               }
 
