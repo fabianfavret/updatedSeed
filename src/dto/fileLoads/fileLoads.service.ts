@@ -28,13 +28,13 @@ export class FileLoadsService {
   @Inject(HttpService)
   private readonly httpService: HttpService;
 
-  private readonly editorURL = 'http://localhost:3000/api/';
+  // private readonly editorURL = 'http://localhost:3000/api/';
   // private readonly editorURL = 'https://editor-backoffice.tangerine-dev.oneclicklabs.es/api/';
   // private readonly editorURL = 'https://editor-backoffice.tangerine-qa.oneclicklabs.es/api/';
-  // private readonly editorURL = 'https://editor-backoffice.blueberrymath.ai/api/';
+  private readonly editorURL = 'https://editor-backoffice.blueberrymath.ai/api/';
 
   async processExcelFile(params: {
-    query: { educationYearGuid?: string; educationDisciplineGuid?: string; langCode: string; responsible?: string };
+    query: { educationYearGuid?: string; educationDisciplineGuid?: string; langCode: string; responsible?: string; fileName?: string };
     token?: string;
   }): Promise<any[]> {
     try {
@@ -48,7 +48,7 @@ export class FileLoadsService {
 
       const files = fs.readdirSync(directoryPath);
       for (const file of files) {
-        if (file === '5_Primaria (Spanish).xlsx') {
+        if (file === params.query.fileName) {
           this.logger.debug('file ---- ', file);
 
           let errorConcatenatedString = '';
