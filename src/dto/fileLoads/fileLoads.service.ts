@@ -41,7 +41,6 @@ export class FileLoadsService {
       params.query.educationDisciplineGuid = '09d34c20-71b9-475e-b42d-d677883700e9'; // MATH
       params.query.responsible = '0da5d833-ccf5-491e-b251-3b31e4ef15de'; // Pablo
 
-      //const dataJSON = [];
       const directoryPath = 'excel';
       let errorOutputFilePath = '';
       let updatedOutputFilePath = '';
@@ -51,7 +50,7 @@ export class FileLoadsService {
       for (const file of files) {
         if (file === '5_Primaria (Spanish).xlsx') {
           this.logger.debug('file ---- ', file);
-          // const dataJSON = [];
+
           let errorConcatenatedString = '';
           let updatedConcatenatedString = '';
           let createdConcatenatedString = '';
@@ -65,11 +64,9 @@ export class FileLoadsService {
 
             const workbook = xlsx.readFile(filePath); // Leer el archivo Excel
 
-            // const columnName = 'JSON'; //  nombre de la columna a leer
             const xmlRowObject = xlsx.utils.sheet_to_json(workbook.Sheets[sheetName]); // Lee los datos de la hoja y convierte a un arreglo de objetos
 
             for (const row of xmlRowObject) {
-              // dataJSON.push({ id: JSON.parse(row[columnName]).id, data: row[columnName] });
               this.logger.debug(`row----- ${params.query.langCode === 'ES' ? row['Referencia para ID'] : row['ID con idioma']}`);
               try {
                 JSON.parse(row['JSON']);
@@ -98,6 +95,7 @@ export class FileLoadsService {
                 pageSize: '1000',
                 offset: '0',
                 jsonID: params.id,
+                langCode: params.query.langCode,
                 orderBy: 'guid',
                 orderType: 'ASC'
               },
@@ -116,33 +114,13 @@ export class FileLoadsService {
             async function _update(params: Params) {
               updatedConcatenatedString += params.seed.guid + '\n';
 
-              const guids = String(params.seed.guid).split('_');
-
-              let update = false;
-              switch (params.query.langCode) {
-                case 'PT':
-                  update = guids[0].indexOf('ES') < 0 && guids[0].indexOf('EN') < 0 && guids[0].indexOf('OCT-00') < 0 && guids[0].indexOf('TF-00') < 0;
-                  break;
-                case 'ES':
-                  update = guids[0].indexOf('ES') > -1 || guids[0].indexOf('OCT-00') > -1 || guids[0].indexOf('TF-00') > -1;
-                  break;
-                case 'EN':
-                  update = guids[0].indexOf('EN') > -1 || guids[0].indexOf('AL-00') > -1;
-                  break;
-              }
-
-              if (update) {
-                params.$this.logger.debug(`UPDATE seed----- ${params.seed.guid}`);
-                await params.$this.patch({
-                  url: 'seeds/{seedGuid}',
-                  path: { seedGuid: params.seed.guid },
-                  payload: { name: params.name, data: params.data },
-                  accessToken: params.token
-                });
-              } else {
-                console.log(`ERROR lang code ${guids.join('_')}`);
-                await _create({ ...params });
-              }
+              params.$this.logger.debug(`UPDATE seed----- ${params.seed.guid}`);
+              await params.$this.patch({
+                url: 'seeds/{seedGuid}',
+                path: { seedGuid: params.seed.guid },
+                payload: { name: params.name, data: params.data },
+                accessToken: params.token
+              });
             }
 
             async function _create(params: Params) {
@@ -158,7 +136,6 @@ export class FileLoadsService {
               };
 
               //crear la semilla
-              //console.log('Crear semilla');
               const nodes = await params.$this.get({
                 url: `nodes`,
                 query: { pageSize: '1000', offset: '0', search: `_${params.id}` },
@@ -189,21 +166,13 @@ export class FileLoadsService {
             }
           }
 
-          fs.writeFile(errorOutputFilePath, errorConcatenatedString, (error) => {
-            if (error) {
-              throw new Error(error.message);
-            }
-          });
-          fs.writeFile(updatedOutputFilePath, updatedConcatenatedString, (error) => {
-            if (error) {
-              throw new Error(error.message);
-            }
-          });
-          fs.writeFile(createdOutputFilePath, createdConcatenatedString, (error) => {
-            if (error) {
-              throw new Error(error.message);
-            }
-          });
+          try {
+            fs.writeFileSync(errorOutputFilePath, errorConcatenatedString);
+            fs.writeFileSync(updatedOutputFilePath, updatedConcatenatedString);
+            fs.writeFileSync(createdOutputFilePath, createdConcatenatedString);
+          } catch (error) {
+            console.log(`Error File -------`, error);
+          }
 
           this.logger.debug(`END ------ ${file}`);
         }
