@@ -32,7 +32,7 @@ export class FileLoadsService {
 
       const files = fs.readdirSync(directoryPath);
       for (const file of files) {
-        if (file === '2_Primaria (Portuguese).xlsx') {
+        if (file === '2_Primaria (Spanish).xlsx') {
           this.logger.debug('file ---- ', file);
           // const dataJSON = [];
           let errorConcatenatedString = '';
