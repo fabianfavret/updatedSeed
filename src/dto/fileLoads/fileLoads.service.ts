@@ -22,19 +22,23 @@ export class FileLoadsService {
   }): Promise<any[]> {
     try {
       params.query.educationDisciplineGuid = '09d34c20-71b9-475e-b42d-d677883700e9'; // MATH
-      params.query.responsible = '5457e5d3-7600-428f-9c22-0bef43918c78'; // Pablo
+      params.query.responsible = '0da5d833-ccf5-491e-b251-3b31e4ef15de'; // Pablo
 
       //const dataJSON = [];
       const directoryPath = 'excel';
-      const outputFilePath = `${directoryPath}/salida.txt`;
+      let updatedOutputFilePath = '';
+      let createdOutputFilePath = '';
 
       const files = fs.readdirSync(directoryPath);
       for (const file of files) {
         this.logger.debug('file ---- ', file);
         // const dataJSON = [];
-        let concatenatedString = '';
+        let updatedConcatenatedString = '';
+        let createdConcatenatedString = '';
         if (file.endsWith('.xlsx')) {
           const filePath = `${directoryPath}/${file}`;
+          updatedOutputFilePath = `${directoryPath}/update_${file}`;
+          createdOutputFilePath = `${directoryPath}/create_${file}`;
 
           const sheetName = 'Seeds';
 
@@ -45,6 +49,7 @@ export class FileLoadsService {
 
           for (const row of xmlRowObject) {
             // dataJSON.push({ id: JSON.parse(row[columnName]).id, data: row[columnName] });
+            this.logger.debug(`row----- ${row['ID con idioma']}`);
             await _update({
               $this: this,
               token: params.token,
@@ -55,7 +60,6 @@ export class FileLoadsService {
               node: row['ID'],
               phase: String(row['Proceso']).toLowerCase()
             });
-            this.logger.debug(`row----- ${row['ID con idioma']}`);
           }
         }
 
@@ -89,7 +93,7 @@ export class FileLoadsService {
           if (seedData.count > 0) {
             //actualizar la semilla
             for (const seed of seedData.loSeed) {
-              concatenatedString += seed.guid + '\n';
+              updatedConcatenatedString += seed.guid + '\n';
 
               const guids = String(seed.guid).split('_');
 
@@ -117,6 +121,7 @@ export class FileLoadsService {
               }
             }
           } else {
+            createdConcatenatedString += params.name + '\n';
             const payload = {
               name: params.name,
               data: params.data,
@@ -127,7 +132,12 @@ export class FileLoadsService {
               langCode: params.query.langCode
             };
             //crear la semilla
-            const nodes = await params.$this.get({ url: `nodes`, query: { search: `_${params.id}` }, accessToken: params.token });
+            //console.log('Crear semilla');
+            const nodes = await params.$this.get({
+              url: `nodes`,
+              query: { pageSize: '1000', offset: '0', search: `_${params.id}` },
+              accessToken: params.token
+            });
             if (nodes.count) {
               for (const node of nodes.nodes) {
                 params.$this.logger.debug(`NEW seed----- ${node.guid}`);
@@ -153,7 +163,12 @@ export class FileLoadsService {
           }
         }
 
-        fs.writeFile(outputFilePath, concatenatedString, (error) => {
+        fs.writeFile(updatedOutputFilePath, updatedConcatenatedString, (error) => {
+          if (error) {
+            throw new Error(error.message);
+          }
+        });
+        fs.writeFile(createdOutputFilePath, createdConcatenatedString, (error) => {
           if (error) {
             throw new Error(error.message);
           }
