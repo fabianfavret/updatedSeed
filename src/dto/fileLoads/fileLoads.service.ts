@@ -5,6 +5,23 @@ import * as fs from 'fs';
 import { catchError, firstValueFrom } from 'rxjs';
 import * as xlsx from 'xlsx';
 
+class Params {
+  $this: FileLoadsService;
+  token: string;
+  seed?: { guid: string };
+  query: {
+    educationYearGuid?: string;
+    educationDisciplineGuid?: string;
+    langCode?: string;
+    responsible?: string;
+  };
+  id: string;
+  name: string;
+  data: string;
+  node: string;
+  phase: string;
+}
+
 @Injectable()
 export class FileLoadsService {
   private readonly logger = new Logger(FileLoadsService.name);
@@ -17,7 +34,7 @@ export class FileLoadsService {
   // private readonly editorURL = 'https://editor-backoffice.blueberrymath.ai/api/';
 
   async processExcelFile(params: {
-    query: { educationYearGuid?: string; educationDisciplineGuid?: string; langCode?: string; responsible?: string };
+    query: { educationYearGuid?: string; educationDisciplineGuid?: string; langCode: string; responsible?: string };
     token?: string;
   }): Promise<any[]> {
     try {
@@ -32,7 +49,7 @@ export class FileLoadsService {
 
       const files = fs.readdirSync(directoryPath);
       for (const file of files) {
-        if (file === '2_Primaria (Spanish).xlsx') {
+        if (file === '5_Primaria (Spanish).xlsx') {
           this.logger.debug('file ---- ', file);
           // const dataJSON = [];
           let errorConcatenatedString = '';
@@ -53,41 +70,28 @@ export class FileLoadsService {
 
             for (const row of xmlRowObject) {
               // dataJSON.push({ id: JSON.parse(row[columnName]).id, data: row[columnName] });
-              this.logger.debug(`row----- ${row['ID con idioma']}`);
+              this.logger.debug(`row----- ${params.query.langCode === 'ES' ? row['Referencia para ID'] : row['ID con idioma']}`);
               try {
                 JSON.parse(row['JSON']);
-                await _update({
+                await _continue({
                   $this: this,
                   token: params.token,
                   query: params.query,
-                  id: row['ID con idioma'],
-                  name: row['ID con idioma'],
+                  id: params.query.langCode === 'ES' ? row['Referencia para ID'] : row['ID con idioma'],
+                  name: params.query.langCode === 'ES' ? row['Referencia para ID'] : row['ID con idioma'],
                   data: row['JSON'],
                   node: row['ID'],
                   phase: String(row['Proceso']).toLowerCase()
                 });
               } catch (error) {
-                errorConcatenatedString += row['ID con idioma'] + '\n';
+                this.logger.debug(`ERROD row----- ${params.query.langCode === 'ES' ? row['Referencia para ID'] : row['ID con idioma']}`);
+                errorConcatenatedString += `${params.query.langCode === 'ES' ? row['Referencia para ID'] : row['ID con idioma']}` + '\n';
                 continue;
               }
             }
           }
 
-          async function _update(params: {
-            $this: FileLoadsService;
-            token: string;
-            query: {
-              educationYearGuid?: string;
-              educationDisciplineGuid?: string;
-              langCode?: string;
-              responsible?: string;
-            };
-            id: string;
-            name: string;
-            data: string;
-            node: string;
-            phase: string;
-          }) {
+          async function _continue(params: Params) {
             const seedData = await params.$this.get({
               url: 'seeds/',
               query: {
@@ -103,34 +107,45 @@ export class FileLoadsService {
             if (seedData.count > 0) {
               //actualizar la semilla
               for (const seed of seedData.loSeed) {
-                updatedConcatenatedString += seed.guid + '\n';
-
-                const guids = String(seed.guid).split('_');
-
-                let update = false;
-                switch (params.query.langCode) {
-                  case 'PT':
-                    update = guids[0].indexOf('ES') < 0 && guids[0].indexOf('EN') < 0 && guids[0].indexOf('OCT-00') < 0 && guids[0].indexOf('TF-00') < 0;
-                    break;
-                  case 'ES':
-                    update = guids[0].indexOf('ES') > -1 || guids[0].indexOf('OCT-00') > -1 || guids[0].indexOf('TF-00') > -1;
-                    break;
-                  case 'EN':
-                    update = guids[0].indexOf('EN') > -1 || guids[0].indexOf('AL-00') > -1;
-                    break;
-                }
-
-                if (update) {
-                  params.$this.logger.debug(`UPDATE seed----- ${seed.guid}`);
-                  await params.$this.patch({
-                    url: 'seeds/{seedGuid}',
-                    path: { seedGuid: seed.guid },
-                    payload: { name: params.name, data: params.data },
-                    accessToken: params.token
-                  });
-                }
+                _update({ ...params, seed: seed });
               }
             } else {
+              await _create({ ...params });
+            }
+
+            async function _update(params: Params) {
+              updatedConcatenatedString += params.seed.guid + '\n';
+
+              const guids = String(params.seed.guid).split('_');
+
+              let update = false;
+              switch (params.query.langCode) {
+                case 'PT':
+                  update = guids[0].indexOf('ES') < 0 && guids[0].indexOf('EN') < 0 && guids[0].indexOf('OCT-00') < 0 && guids[0].indexOf('TF-00') < 0;
+                  break;
+                case 'ES':
+                  update = guids[0].indexOf('ES') > -1 || guids[0].indexOf('OCT-00') > -1 || guids[0].indexOf('TF-00') > -1;
+                  break;
+                case 'EN':
+                  update = guids[0].indexOf('EN') > -1 || guids[0].indexOf('AL-00') > -1;
+                  break;
+              }
+
+              if (update) {
+                params.$this.logger.debug(`UPDATE seed----- ${params.seed.guid}`);
+                await params.$this.patch({
+                  url: 'seeds/{seedGuid}',
+                  path: { seedGuid: params.seed.guid },
+                  payload: { name: params.name, data: params.data },
+                  accessToken: params.token
+                });
+              } else {
+                console.log(`ERROR lang code ${guids.join('_')}`);
+                await _create({ ...params });
+              }
+            }
+
+            async function _create(params: Params) {
               createdConcatenatedString += params.name + '\n';
               const payload = {
                 name: params.name,
@@ -141,6 +156,7 @@ export class FileLoadsService {
                 responsible: params.query.responsible,
                 langCode: params.query.langCode
               };
+
               //crear la semilla
               //console.log('Crear semilla');
               const nodes = await params.$this.get({
@@ -150,7 +166,7 @@ export class FileLoadsService {
               });
               if (nodes.count) {
                 for (const node of nodes.nodes) {
-                  params.$this.logger.debug(`NEW seed----- ${node.guid}`);
+                  params.$this.logger.debug(`NEW seed----- Node ${node.guid}`);
                   await params.$this.post({
                     url: 'seeds',
                     payload: {
