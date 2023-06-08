@@ -37,8 +37,8 @@ export class FileLoadsService {
         let createdConcatenatedString = '';
         if (file.endsWith('.xlsx')) {
           const filePath = `${directoryPath}/${file}`;
-          updatedOutputFilePath = `${directoryPath}/update_${file}`;
-          createdOutputFilePath = `${directoryPath}/create_${file}`;
+          updatedOutputFilePath = `${directoryPath}/update_${file.split('.xlsx').join('.txt')}`;
+          createdOutputFilePath = `${directoryPath}/create_${file.split('.xlsx').join('.txt')}`;
 
           const sheetName = 'Seeds';
 
